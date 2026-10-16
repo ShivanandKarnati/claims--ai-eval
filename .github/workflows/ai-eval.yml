@@ -1,0 +1,33 @@
+name: AI quality gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CLAIMS_MODEL: llama3.2:3b
+      ACCURACY_THRESHOLD: "0.80"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ollama and pull the model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > /dev/null 2>&1 &) || true
+          sleep 5
+          ollama pull "$CLAIMS_MODEL"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AI tests (fails the build if quality drops)
+        run: pytest -v -s
